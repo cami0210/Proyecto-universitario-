@@ -280,3 +280,8 @@ $('#diasAviso').addEventListener('change', (ev) => {
 
 $('#fechaHistorial').value = hoyISO();
 render();
+
+// Instalar en el celular y funcionar sin internet (solo cuando está publicada, p. ej. en Netlify)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}

@@ -20,3 +20,20 @@ Funciona en el navegador del computador o del celular, **sin internet y sin inst
 ## Importante
 Los datos se guardan en el navegador del dispositivo donde se usa. Descargue una copia de seguridad
 de vez en cuando (pestaña “Copia de seguridad”), sobre todo antes de borrar el historial o cambiar de celular.
+
+## Publicar en Netlify
+**Opción A — conectada a GitHub (se actualiza sola):**
+1. Entrar a https://app.netlify.com e iniciar sesión con GitHub.
+2. *Add new site* → *Import an existing project* → *GitHub* → elegir este repositorio.
+3. En *Branch to deploy* elegir la rama donde está la app. Dejar vacío el *Build command*; *Publish directory*: `.`
+4. *Deploy*. Netlify da un enlace tipo `https://algo.netlify.app` (se puede cambiar el nombre en *Site configuration → Change site name*).
+
+**Opción B — arrastrar y soltar:** descargar el proyecto, ir a https://app.netlify.com/drop y arrastrar la carpeta.
+
+## Instalarla en el celular
+Abrir el enlace de Netlify en el celular:
+- **Android (Chrome):** menú ⋮ → *Agregar a la pantalla principal* / *Instalar app*.
+- **iPhone (Safari):** botón Compartir → *Agregar a inicio*.
+
+Después abre como una app y funciona aunque no haya internet.
+Al publicar cambios, subir el número de `VERSION` en `sw.js`.

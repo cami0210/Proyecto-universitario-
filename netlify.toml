@@ -1,0 +1,8 @@
+# Configuración para publicar en Netlify (sitio estático, sin compilación)
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
