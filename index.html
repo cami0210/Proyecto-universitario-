@@ -17,13 +17,17 @@
       <button class="tab active" data-tab="resumen">Resumen</button>
       <button class="tab" data-tab="productos">Productos</button>
       <button class="tab" data-tab="ventas">Ventas</button>
-      <button class="tab" data-tab="ajustes">Copia de seguridad</button>
+      <button class="tab" data-tab="ajustes">Ajustes</button>
     </nav>
   </header>
 
   <main>
     <!-- RESUMEN -->
     <section id="resumen" class="panel active">
+      <div id="avisoContar" class="box aviso-contar" hidden>
+        <span>📝 Hay <b id="numContar">0</b> productos sin contar. Escriba cuántos tiene de cada uno para que los avisos funcionen bien.</span>
+        <button class="btn primary" id="irContar">Ir a contar</button>
+      </div>
       <div class="cards">
         <div class="card"><span>Ventas de hoy</span><strong id="kpiVentasHoy">$0</strong></div>
         <div class="card"><span>Ganancia de hoy</span><strong id="kpiGananciaHoy">$0</strong></div>
@@ -53,6 +57,7 @@
           <option value="">Todos</option>
           <option value="vence">Vencidos / por vencer</option>
           <option value="poco">Poco stock</option>
+          <option value="contar">Por contar</option>
         </select>
         <button class="btn primary" id="btnNuevo">+ Nuevo producto</button>
       </div>
@@ -64,6 +69,10 @@
           <tbody id="tablaProductos"></tbody>
         </table>
         <p id="sinProductos" class="vacio">Todavía no hay productos. Toque “+ Nuevo producto” para empezar.</p>
+      </div>
+      <div class="box catalogo">
+        <span><b>¿No quiere escribir todo a mano?</b> Cargue una lista de más de 130 productos típicos de tienda (gaseosas, cervezas, plaza, panadería, aseo...) con precios aproximados.</span>
+        <button class="btn btnCatalogo">📋 Cargar productos típicos</button>
       </div>
     </section>
 
@@ -104,6 +113,14 @@
           <button class="btn primary" id="btnExportar">⬇ Descargar copia</button>
           <label class="btn">⬆ Cargar copia<input type="file" id="archivoImportar" accept="application/json" hidden></label>
           <button class="btn" id="btnCsv">Descargar inventario (Excel/CSV)</button>
+        </div>
+      </div>
+      <div class="box">
+        <h2>Lista de productos típicos</h2>
+        <p>Agrega productos comunes de tienda de barrio con precios aproximados (no repite los que ya existen).</p>
+        <div class="fila">
+          <button class="btn btnCatalogo">📋 Cargar productos típicos</button>
+          <button class="btn peligro" id="btnQuitarPendientes">Quitar los que nunca se contaron</button>
         </div>
       </div>
       <div class="box">
@@ -152,6 +169,7 @@
   </dialog>
 
   <div id="toast" class="toast"></div>
+  <script src="catalogo.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

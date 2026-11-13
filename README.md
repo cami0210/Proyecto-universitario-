@@ -10,6 +10,13 @@ Funciona en el navegador del computador o del celular, **sin internet y sin inst
 4. Cuando llegue mercancía, tocar “+ Llegó” en el producto.
 5. Revisar el **Resumen** todos los días.
 
+## Productos típicos ya listos
+En **Productos** (o en **Ajustes**) está el botón “📋 Cargar productos típicos”: agrega más de 130 productos comunes de
+tienda de barrio colombiana (gaseosas Coca-Cola, Quatro, Postobón; aguas Brisa y Cristal; jugos Hit; cervezas Póker,
+Águila, Costeñita; plaza, carnes, panadería, granos, mecato y aseo) con **precios aproximados**.
+Quedan marcados “por contar”: se escribe cuántos hay de cada uno, se revisan los precios y se borran los que no se venden.
+En Ajustes hay un botón para quitar de una vez todos los que nunca se contaron. La lista está en `catalogo.js`.
+
 ## Qué hace
 - **Avisa lo que está vencido o por vencer** (por defecto 7 días antes) para venderlo primero y que no se pierda.
 - **Avisa lo que se está acabando** según la cantidad mínima de cada producto.
@@ -19,7 +26,7 @@ Funciona en el navegador del computador o del celular, **sin internet y sin inst
 
 ## Importante
 Los datos se guardan en el navegador del dispositivo donde se usa. Descargue una copia de seguridad
-de vez en cuando (pestaña “Copia de seguridad”), sobre todo antes de borrar el historial o cambiar de celular.
+de vez en cuando (pestaña “Ajustes”), sobre todo antes de borrar el historial o cambiar de celular.
 
 ## Publicar en Netlify
 **Opción A — conectada a GitHub (se actualiza sola):**

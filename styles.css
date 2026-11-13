@@ -78,3 +78,23 @@ dialog small { font-weight: normal; }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
   background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; transition: transform .25s; z-index: 20; }
 .toast.show { transform: translateX(-50%) translateY(0); }
+.catalogo { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.aviso-contar { background: var(--warn-bg); border-color: transparent; display: flex; flex-wrap: wrap; gap: 10px;
+  align-items: center; justify-content: space-between; }
+input.contar { width: 7em; text-align: right; border-color: var(--warn); }
+.cat-movil { display: none; color: var(--muted); font-weight: normal; }
+/* En el celular: cada producto como una tarjeta, sin deslizar hacia los lados */
+@media (max-width: 640px) {
+  .tabla-wrap { background: transparent; border: 0; }
+  thead { display: none; }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tr { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+  td { border: 0; padding: 4px 0; white-space: normal; }
+  td.col-cat { display: none; }
+  td.nombre { font-size: 1.05rem; padding-bottom: 6px; }
+  .cat-movil { display: block; font-size: .85rem; }
+  td[data-label] { display: flex; justify-content: space-between; align-items: center; text-align: right; }
+  td[data-label]::before { content: attr(data-label); color: var(--muted); font-size: .9rem; }
+  td.acc { justify-content: flex-start; padding-top: 8px; }
+  input.contar { width: 9em; }
+}

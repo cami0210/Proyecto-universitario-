@@ -1,6 +1,6 @@
 // Permite que la app abra sin internet. Cambie VERSION al publicar cambios.
-const VERSION = 'tienda-v1';
-const ARCHIVOS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icon.svg'];
+const VERSION = 'tienda-v2';
+const ARCHIVOS = ['./', 'index.html', 'styles.css', 'app.js', 'catalogo.js', 'manifest.webmanifest', 'icon.svg'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(ARCHIVOS)));
   self.skipWaiting();

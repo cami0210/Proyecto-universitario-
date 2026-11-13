@@ -48,8 +48,10 @@ function estadoVence(p) {
   if (d <= datos.diasAviso) return { clase: 'amarillo', texto: `Vence en ${d} día${d === 1 ? '' : 's'}`, d };
   return { clase: 'verde', texto: fechaBonita(p.vence), d };
 }
-const pocoStock = (p) => Number(p.cantidad) <= Number(p.minimo || 0);
+// "pendiente" = producto del catálogo que todavía no se ha contado (no genera alertas)
+const pocoStock = (p) => !p.pendiente && Number(p.cantidad) <= Number(p.minimo || 0);
 const porVencer = (p) => { const e = estadoVence(p); return e && e.clase !== 'verde'; };
+const pendientes = () => datos.productos.filter((p) => p.pendiente);
 
 // ---------- pestañas ----------
 document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () => {
@@ -75,6 +77,9 @@ function totales(ventas) {
 }
 
 function renderResumen() {
+  const np = pendientes().length;
+  $('#avisoContar').hidden = !np;
+  $('#numContar').textContent = np;
   const t = totales(ventasDelDia(hoyISO()));
   $('#kpiVentasHoy').textContent = plata(t.total);
   $('#kpiGananciaHoy').textContent = plata(t.ganancia);
@@ -107,19 +112,21 @@ function renderProductos() {
   const lista = datos.productos
     .filter((p) => !q || p.nombre.toLowerCase().includes(q))
     .filter((p) => !sel.value || p.categoria === sel.value)
-    .filter((p) => !est || (est === 'vence' ? porVencer(p) : pocoStock(p)))
+    .filter((p) => !est || (est === 'vence' ? porVencer(p) : est === 'contar' ? p.pendiente : pocoStock(p)))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
 
   $('#tablaProductos').innerHTML = lista.map((p) => {
     const e = estadoVence(p);
-    const cant = pocoStock(p) ? `<span class="tag ${p.cantidad <= 0 ? 'rojo' : 'amarillo'}">${p.cantidad}</span>` : p.cantidad;
+    const cant = p.pendiente
+      ? `<input class="contar" type="number" min="0" step="any" placeholder="¿Cuántos?" data-contar="${p.id}" aria-label="Cantidad de ${esc(p.nombre)}">`
+      : pocoStock(p) ? `<span class="tag ${p.cantidad <= 0 ? 'rojo' : 'amarillo'}">${p.cantidad}</span>` : p.cantidad;
     return `<tr>
-      <td><b>${esc(p.nombre)}</b></td>
-      <td>${esc(p.categoria)}</td>
-      <td class="num">${cant}</td>
-      <td class="num">${plata(p.costo)}</td>
-      <td class="num">${plata(p.precio)}</td>
-      <td>${e ? `<span class="tag ${e.clase}">${e.texto}</span>` : '<span class="hint">No vence</span>'}</td>
+      <td class="nombre"><b>${esc(p.nombre)}</b> <small class="cat-movil">${esc(p.categoria)}</small></td>
+      <td class="col-cat">${esc(p.categoria)}</td>
+      <td class="num" data-label="Cantidad">${cant}</td>
+      <td class="num" data-label="Costo">${plata(p.costo)}</td>
+      <td class="num" data-label="Precio venta">${plata(p.precio)}</td>
+      <td data-label="Vence">${e ? `<span class="tag ${e.clase}">${e.texto}</span>` : '<span class="hint">No vence</span>'}</td>
       <td class="acc">
         <button class="btn peq" data-surtir="${p.id}" title="Llegó mercancía">+ Llegó</button>
         <button class="btn peq" data-editar="${p.id}">Editar</button>
@@ -177,7 +184,7 @@ $('#formProducto').addEventListener('submit', (ev) => {
   const repetido = datos.productos.find((x) => x.nombre.toLowerCase() === p.nombre.toLowerCase() && x.id !== editandoId);
   if (repetido) { ev.preventDefault(); aviso('Ya existe un producto con ese nombre.'); return; }
   if (p.precio < p.costo && !confirm('El precio de venta es menor que el costo. ¿Guardar de todas formas?')) { ev.preventDefault(); return; }
-  if (editandoId) Object.assign(datos.productos.find((x) => x.id === editandoId), p);
+  if (editandoId) Object.assign(datos.productos.find((x) => x.id === editandoId), p, { pendiente: false });
   else datos.productos.push({ id: id(), ...p });
   guardar(); render(); aviso('Producto guardado ✔');
 });
@@ -206,6 +213,7 @@ $('#formSurtir').addEventListener('submit', (ev) => {
   p.cantidad = Number(p.cantidad) + Number(f.cantidad.value);
   if (f.costo.value !== '') p.costo = Number(f.costo.value);
   if (f.vence.value) p.vence = f.vence.value;
+  p.pendiente = false;
   guardar(); render(); aviso(`Ahora hay ${p.cantidad} de ${p.nombre}`);
 });
 
@@ -276,6 +284,43 @@ $('#btnCsv').addEventListener('click', () => {
 });
 $('#diasAviso').addEventListener('change', (ev) => {
   datos.diasAviso = Math.max(1, Number(ev.target.value) || 7); guardar(); render();
+});
+
+// ---------- catálogo de productos típicos ----------
+function cargarCatalogo() {
+  const existentes = new Set(datos.productos.map((p) => p.nombre.toLowerCase()));
+  const nuevos = CATALOGO.filter(([n]) => !existentes.has(n.toLowerCase()))
+    .map(([nombre, categoria, costo, precio, minimo]) => ({ id: id(), nombre, categoria, cantidad: 0, minimo, costo, precio, vence: '', pendiente: true }));
+  if (!nuevos.length) { aviso('Ya tiene todos los productos de la lista.'); return; }
+  if (!confirm(`Se van a agregar ${nuevos.length} productos típicos de tienda con precios aproximados.\n\nDespués escriba cuántos tiene de cada uno, revise los precios y borre los que no vende. ¿Continuar?`)) return;
+  datos.productos.push(...nuevos); guardar();
+  $('#filtroEstado').value = 'contar';
+  render(); aviso(`${nuevos.length} productos agregados. Ahora cuéntelos.`);
+}
+document.querySelectorAll('.btnCatalogo').forEach((b) => b.addEventListener('click', cargarCatalogo));
+
+// Escribir la cantidad directamente en la tabla (productos por contar)
+$('#tablaProductos').addEventListener('change', (ev) => {
+  const inp = ev.target.closest('[data-contar]'); if (!inp || inp.value === '') return;
+  const p = datos.productos.find((x) => x.id === inp.dataset.contar);
+  p.cantidad = Number(inp.value); p.pendiente = false; guardar();
+  aviso(`${p.nombre}: ${p.cantidad} ✔`);
+  render();
+  const sig = document.querySelector('[data-contar]'); if (sig) sig.focus();
+});
+$('#tablaProductos').addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && ev.target.matches('[data-contar]')) ev.target.dispatchEvent(new Event('change', { bubbles: true }));
+});
+
+$('#btnQuitarPendientes').addEventListener('click', () => {
+  const n = pendientes().length;
+  if (!n) { aviso('No hay productos sin contar.'); return; }
+  if (!confirm(`¿Quitar los ${n} productos que nunca se contaron? (Los que ya tienen cantidad no se tocan.)`)) return;
+  datos.productos = datos.productos.filter((p) => !p.pendiente); guardar(); render(); aviso(`${n} productos quitados`);
+});
+$('#irContar').addEventListener('click', () => {
+  $('#filtroEstado').value = 'contar';
+  document.querySelector('[data-tab=productos]').click();
 });
 
 $('#fechaHistorial').value = hoyISO();
