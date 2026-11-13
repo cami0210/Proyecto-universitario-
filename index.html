@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventario de la Tienda</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>🛒 Mi Tienda</h1>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="resumen">Resumen</button>
+      <button class="tab" data-tab="productos">Productos</button>
+      <button class="tab" data-tab="ventas">Ventas</button>
+      <button class="tab" data-tab="ajustes">Copia de seguridad</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- RESUMEN -->
+    <section id="resumen" class="panel active">
+      <div class="cards">
+        <div class="card"><span>Ventas de hoy</span><strong id="kpiVentasHoy">$0</strong></div>
+        <div class="card"><span>Ganancia de hoy</span><strong id="kpiGananciaHoy">$0</strong></div>
+        <div class="card"><span>Plata invertida en mercancía</span><strong id="kpiValorCosto">$0</strong></div>
+        <div class="card"><span>Ganancia si se vende todo</span><strong id="kpiGananciaPot">$0</strong></div>
+      </div>
+      <div class="grid2">
+        <div class="box">
+          <h2>⚠️ Vencidos o por vencer</h2>
+          <p class="hint">Productos que vencen en los próximos <b id="diasAvisoTxt">7</b> días. ¡Véndalos primero!</p>
+          <ul id="listaVence" class="alertas"></ul>
+        </div>
+        <div class="box">
+          <h2>📦 Se está acabando</h2>
+          <p class="hint">Productos con la cantidad mínima o menos. Hay que volver a comprar.</p>
+          <ul id="listaPoco" class="alertas"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRODUCTOS -->
+    <section id="productos" class="panel">
+      <div class="toolbar">
+        <input id="buscar" type="search" placeholder="Buscar producto...">
+        <select id="filtroCategoria"><option value="">Todas las categorías</option></select>
+        <select id="filtroEstado">
+          <option value="">Todos</option>
+          <option value="vence">Vencidos / por vencer</option>
+          <option value="poco">Poco stock</option>
+        </select>
+        <button class="btn primary" id="btnNuevo">+ Nuevo producto</button>
+      </div>
+      <div class="tabla-wrap">
+        <table>
+          <thead>
+            <tr><th>Producto</th><th>Categoría</th><th class="num">Cantidad</th><th class="num">Costo</th><th class="num">Precio venta</th><th>Vence</th><th></th></tr>
+          </thead>
+          <tbody id="tablaProductos"></tbody>
+        </table>
+        <p id="sinProductos" class="vacio">Todavía no hay productos. Toque “+ Nuevo producto” para empezar.</p>
+      </div>
+    </section>
+
+    <!-- VENTAS -->
+    <section id="ventas" class="panel">
+      <div class="grid2">
+        <div class="box">
+          <h2>Registrar una venta</h2>
+          <form id="formCarrito" class="fila">
+            <input id="ventaProducto" list="listaNombres" placeholder="Producto" required autocomplete="off">
+            <datalist id="listaNombres"></datalist>
+            <input id="ventaCantidad" type="number" min="1" step="1" value="1" required>
+            <button class="btn" type="submit">Agregar</button>
+          </form>
+          <ul id="carrito" class="carrito"></ul>
+          <div class="total-venta">Total: <strong id="totalCarrito">$0</strong></div>
+          <button class="btn primary ancho" id="btnCobrar" disabled>✔ Registrar venta</button>
+        </div>
+        <div class="box">
+          <h2>Historial de ventas</h2>
+          <label class="fila">Día: <input type="date" id="fechaHistorial"></label>
+          <div class="cards mini">
+            <div class="card"><span>Vendido</span><strong id="histTotal">$0</strong></div>
+            <div class="card"><span>Ganancia</span><strong id="histGanancia">$0</strong></div>
+          </div>
+          <ul id="listaVentas" class="ventas"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- AJUSTES -->
+    <section id="ajustes" class="panel">
+      <div class="box">
+        <h2>Copia de seguridad</h2>
+        <p>Los datos se guardan <b>en este dispositivo</b> (en este navegador). Descargue una copia de vez en cuando
+           para no perder nada si se borra el navegador o se cambia de celular.</p>
+        <div class="fila">
+          <button class="btn primary" id="btnExportar">⬇ Descargar copia</button>
+          <label class="btn">⬆ Cargar copia<input type="file" id="archivoImportar" accept="application/json" hidden></label>
+          <button class="btn" id="btnCsv">Descargar inventario (Excel/CSV)</button>
+        </div>
+      </div>
+      <div class="box">
+        <h2>Preferencias</h2>
+        <label class="fila">Avisar cuando falten
+          <input type="number" id="diasAviso" min="1" max="60" style="width:5em"> días para vencer</label>
+      </div>
+    </section>
+  </main>
+
+  <!-- Formulario de producto -->
+  <dialog id="dlgProducto">
+    <form id="formProducto" method="dialog">
+      <h2 id="tituloDlg">Nuevo producto</h2>
+      <label>Nombre <input name="nombre" required></label>
+      <label>Categoría <input name="categoria" list="listaCategorias" placeholder="Ej: Lácteos, Aseo, Granos"></label>
+      <datalist id="listaCategorias"></datalist>
+      <div class="dos">
+        <label>Cantidad <input name="cantidad" type="number" min="0" step="any" required></label>
+        <label>Avisar cuando queden <input name="minimo" type="number" min="0" step="any" value="3"></label>
+      </div>
+      <div class="dos">
+        <label>Le costó (c/u) <input name="costo" type="number" min="0" step="any" required></label>
+        <label>Lo vende a (c/u) <input name="precio" type="number" min="0" step="any" required></label>
+      </div>
+      <label>Fecha de vencimiento <small>(dejar vacío si no vence)</small> <input name="vence" type="date"></label>
+      <div class="acciones">
+        <button type="button" class="btn" id="btnCancelar">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Agregar existencias -->
+  <dialog id="dlgSurtir">
+    <form id="formSurtir" method="dialog">
+      <h2>Llegó mercancía: <span id="surtirNombre"></span></h2>
+      <label>¿Cuántas unidades llegaron? <input name="cantidad" type="number" min="1" step="any" required></label>
+      <label>Nuevo costo (c/u) <small>(opcional)</small> <input name="costo" type="number" min="0" step="any"></label>
+      <label>Nueva fecha de vencimiento <small>(opcional)</small> <input name="vence" type="date"></label>
+      <div class="acciones">
+        <button type="button" class="btn" id="btnCancelarSurtir">Cancelar</button>
+        <button type="submit" class="btn primary">Agregar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
