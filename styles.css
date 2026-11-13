@@ -98,3 +98,32 @@ input.contar { width: 7em; text-align: right; border-color: var(--warn); }
   td.acc { justify-content: flex-start; padding-top: 8px; }
   input.contar { width: 9em; }
 }
+input.contar.pendiente { border-color: var(--warn); }
+input.contar.amarillo { border-color: var(--warn); background: var(--warn-bg); }
+input.contar.rojo { border-color: var(--danger); background: var(--danger-bg); }
+input.contar { width: 6.5em; }
+.campo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; color: var(--muted); font-size: .9rem; }
+.campo input { font-size: 1.2rem; }
+.box h3 { margin: 18px 0 8px; font-size: 1rem; }
+.salida-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.salida-form #salidaConcepto { grid-column: 1 / -1; }
+.cuadre { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
+.cuadre div { display: flex; justify-content: space-between; padding: 4px 0; }
+.cuadre span { color: var(--muted); }
+.cuadre .total { font-size: 1.3rem; border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 8px; }
+.cuadre .total b { color: var(--primary); }
+.cards.mini.tres { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.cards.mini .card strong { font-size: 1.2rem; }
+.por-tipo { margin: 10px 0 14px; }
+.barra { position: relative; display: flex; justify-content: space-between; padding: 6px 8px; margin-top: 6px;
+  border-radius: 6px; background: var(--bg); overflow: hidden; font-size: .9rem; }
+.barra span { position: relative; z-index: 1; }
+.barra i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--warn-bg); }
+.dias tr[data-ir-dia] { cursor: pointer; }
+@media (max-width: 640px) {
+  .dias thead { display: table-header-group; }
+  .dias table { display: table; } .dias tbody { display: table-row-group; }
+  .dias tr { display: table-row; padding: 0; border: 0; }
+  .dias td { display: table-cell; padding: 8px 4px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .dias.tabla-wrap { background: var(--surface); border: 1px solid var(--border); }
+}

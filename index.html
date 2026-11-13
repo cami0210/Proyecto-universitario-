@@ -16,7 +16,7 @@
     <nav class="tabs" role="tablist">
       <button class="tab active" data-tab="resumen">Resumen</button>
       <button class="tab" data-tab="productos">Productos</button>
-      <button class="tab" data-tab="ventas">Ventas</button>
+      <button class="tab" data-tab="cuentas">Cuentas</button>
       <button class="tab" data-tab="ajustes">Ajustes</button>
     </nav>
   </header>
@@ -28,9 +28,13 @@
         <span>📝 Hay <b id="numContar">0</b> productos sin contar. Escriba cuántos tiene de cada uno para que los avisos funcionen bien.</span>
         <button class="btn primary" id="irContar">Ir a contar</button>
       </div>
+      <div id="avisoCierre" class="box aviso-contar" hidden>
+        <span>🌙 Todavía no ha anotado cuánto vendió hoy.</span>
+        <button class="btn primary" id="irCierre">Hacer el cierre</button>
+      </div>
       <div class="cards">
-        <div class="card"><span>Ventas de hoy</span><strong id="kpiVentasHoy">$0</strong></div>
-        <div class="card"><span>Ganancia de hoy</span><strong id="kpiGananciaHoy">$0</strong></div>
+        <div class="card"><span>Vendido hoy</span><strong id="kpiVentasHoy">$0</strong></div>
+        <div class="card"><span>Vendido este mes</span><strong id="kpiVentasMes">$0</strong></div>
         <div class="card"><span>Plata invertida en mercancía</span><strong id="kpiValorCosto">$0</strong></div>
         <div class="card"><span>Ganancia si se vende todo</span><strong id="kpiGananciaPot">$0</strong></div>
       </div>
@@ -76,29 +80,56 @@
       </div>
     </section>
 
-    <!-- VENTAS -->
-    <section id="ventas" class="panel">
+    <!-- CUENTAS DEL DÍA -->
+    <section id="cuentas" class="panel">
       <div class="grid2">
         <div class="box">
-          <h2>Registrar una venta</h2>
-          <form id="formCarrito" class="fila">
-            <input id="ventaProducto" list="listaNombres" placeholder="Producto" required autocomplete="off">
-            <datalist id="listaNombres"></datalist>
-            <input id="ventaCantidad" type="number" min="1" step="1" value="1" required>
-            <button class="btn" type="submit">Agregar</button>
+          <h2>Cierre del día</h2>
+          <p class="hint">Al final del día, cuente la plata y anote cuánto vendió y lo que se sacó.</p>
+          <label class="campo">Día <input type="date" id="cierreFecha"></label>
+          <label class="campo">💵 Total vendido en el día
+            <input type="number" id="cierreVentas" min="0" step="any" inputmode="numeric" placeholder="Ej: 350000"></label>
+          <button class="btn primary ancho" id="btnGuardarVentas">Guardar total vendido</button>
+
+          <h3>💸 Lo que se sacó</h3>
+          <form id="formSalida" class="salida-form">
+            <select id="salidaTipo">
+              <option>Compra de mercancía</option>
+              <option>Gastos de la tienda</option>
+              <option>Para la casa</option>
+              <option>Otro</option>
+            </select>
+            <input id="salidaConcepto" placeholder="¿En qué? (ej: pago a Coca-Cola, plaza, luz)">
+            <input id="salidaValor" type="number" min="1" step="any" inputmode="numeric" placeholder="Valor" required>
+            <button class="btn" type="submit">+ Agregar</button>
           </form>
-          <ul id="carrito" class="carrito"></ul>
-          <div class="total-venta">Total: <strong id="totalCarrito">$0</strong></div>
-          <button class="btn primary ancho" id="btnCobrar" disabled>✔ Registrar venta</button>
-        </div>
-        <div class="box">
-          <h2>Historial de ventas</h2>
-          <label class="fila">Día: <input type="date" id="fechaHistorial"></label>
-          <div class="cards mini">
-            <div class="card"><span>Vendido</span><strong id="histTotal">$0</strong></div>
-            <div class="card"><span>Ganancia</span><strong id="histGanancia">$0</strong></div>
+          <ul id="listaSalidas" class="ventas"></ul>
+
+          <div class="cuadre">
+            <div><span>Vendió</span><b id="diaVentas">$0</b></div>
+            <div><span>Se sacó</span><b id="diaSalidas">$0</b></div>
+            <div class="total"><span>Quedó</span><b id="diaQueda">$0</b></div>
           </div>
-          <ul id="listaVentas" class="ventas"></ul>
+        </div>
+
+        <div class="box">
+          <h2>¿Cómo va el negocio?</h2>
+          <div class="fila">
+            <label>Mes: <input type="month" id="mesResumen"></label>
+          </div>
+          <div class="cards mini tres">
+            <div class="card"><span>Vendido en el mes</span><strong id="mesVentas">$0</strong></div>
+            <div class="card"><span>Se sacó en el mes</span><strong id="mesSalidas">$0</strong></div>
+            <div class="card"><span>Quedó en el mes</span><strong id="mesQueda">$0</strong></div>
+          </div>
+          <p class="hint" id="mesPromedio"></p>
+          <div id="mesGastosTipo" class="por-tipo"></div>
+          <div class="tabla-wrap dias">
+            <table>
+              <thead><tr><th>Día</th><th class="num">Vendió</th><th class="num">Se sacó</th><th class="num">Quedó</th></tr></thead>
+              <tbody id="tablaDias"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </section>

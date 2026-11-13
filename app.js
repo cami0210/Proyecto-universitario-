@@ -3,17 +3,18 @@ const CLAVE = 'inventario-tienda-v1';
 const $ = (s) => document.querySelector(s);
 
 let datos = cargar();
-let carrito = [];
 let editandoId = null;
 let surtiendoId = null;
 
 function cargar() {
   try {
     const d = JSON.parse(localStorage.getItem(CLAVE));
-    if (d && Array.isArray(d.productos)) return { diasAviso: 7, ventas: [], ...d };
+    if (d && Array.isArray(d.productos)) return normalizar(d);
   } catch (e) { /* datos dañados o sin acceso: empezar vacío */ }
-  return { productos: [], ventas: [], diasAviso: 7 };
+  return normalizar({ productos: [] });
 }
+// dias: { 'AAAA-MM-DD': { ventas: número | null, salidas: [{ id, tipo, concepto, valor }] } }
+function normalizar(d) { return { diasAviso: 7, dias: {}, ...d, productos: d.productos }; }
 function guardar() {
   try { localStorage.setItem(CLAVE, JSON.stringify(datos)); }
   catch (e) { aviso('No se pudo guardar. Descargue una copia de seguridad.'); }
@@ -64,25 +65,33 @@ document.querySelectorAll('.tab').forEach((b) => b.addEventListener('click', () 
 function render() {
   renderResumen();
   renderProductos();
-  renderVentas();
+  renderCuentas();
   $('#diasAviso').value = datos.diasAviso;
   $('#diasAvisoTxt').textContent = datos.diasAviso;
 }
 
-function ventasDelDia(fecha) { return datos.ventas.filter((v) => v.fecha.slice(0, 10) === fecha); }
-function totales(ventas) {
-  let total = 0, ganancia = 0;
-  ventas.forEach((v) => v.items.forEach((i) => { total += i.precio * i.cantidad; ganancia += (i.precio - i.costo) * i.cantidad; }));
-  return { total, ganancia };
+// ---------- cuentas ----------
+const dia = (f) => datos.dias[f] || { ventas: null, salidas: [] };
+const salidasDe = (f) => dia(f).salidas.reduce((t, x) => t + x.valor, 0);
+function resumenMes(mes) { // mes = 'AAAA-MM'
+  const fechas = Object.keys(datos.dias).filter((f) => f.startsWith(mes)).sort();
+  let ventas = 0, salidas = 0, diasConVenta = 0; const porTipo = {};
+  fechas.forEach((f) => {
+    const d = dia(f);
+    if (d.ventas != null) { ventas += d.ventas; diasConVenta++; }
+    d.salidas.forEach((x) => { salidas += x.valor; porTipo[x.tipo] = (porTipo[x.tipo] || 0) + x.valor; });
+  });
+  return { fechas, ventas, salidas, diasConVenta, porTipo };
 }
 
 function renderResumen() {
   const np = pendientes().length;
   $('#avisoContar').hidden = !np;
   $('#numContar').textContent = np;
-  const t = totales(ventasDelDia(hoyISO()));
-  $('#kpiVentasHoy').textContent = plata(t.total);
-  $('#kpiGananciaHoy').textContent = plata(t.ganancia);
+  const hoy = dia(hoyISO());
+  $('#avisoCierre').hidden = hoy.ventas != null || new Date().getHours() < 17;
+  $('#kpiVentasHoy').textContent = hoy.ventas == null ? 'Sin anotar' : plata(hoy.ventas);
+  $('#kpiVentasMes').textContent = plata(resumenMes(hoyISO().slice(0, 7)).ventas);
   let costo = 0, venta = 0;
   datos.productos.forEach((p) => { costo += p.costo * p.cantidad; venta += p.precio * p.cantidad; });
   $('#kpiValorCosto').textContent = plata(costo);
@@ -105,7 +114,6 @@ function renderProductos() {
   sel.innerHTML = '<option value="">Todas las categorías</option>' + cats.map((c) => `<option>${esc(c)}</option>`).join('');
   sel.value = cats.includes(actual) ? actual : '';
   $('#listaCategorias').innerHTML = cats.map((c) => `<option value="${esc(c)}">`).join('');
-  $('#listaNombres').innerHTML = datos.productos.map((p) => `<option value="${esc(p.nombre)}">`).join('');
 
   const q = $('#buscar').value.trim().toLowerCase();
   const est = $('#filtroEstado').value;
@@ -117,9 +125,10 @@ function renderProductos() {
 
   $('#tablaProductos').innerHTML = lista.map((p) => {
     const e = estadoVence(p);
-    const cant = p.pendiente
-      ? `<input class="contar" type="number" min="0" step="any" placeholder="¿Cuántos?" data-contar="${p.id}" aria-label="Cantidad de ${esc(p.nombre)}">`
-      : pocoStock(p) ? `<span class="tag ${p.cantidad <= 0 ? 'rojo' : 'amarillo'}">${p.cantidad}</span>` : p.cantidad;
+    // La cantidad se puede corregir ahí mismo cada vez que ella revise el estante
+    const clase = p.pendiente ? 'contar pendiente' : pocoStock(p) ? `contar ${p.cantidad <= 0 ? 'rojo' : 'amarillo'}` : 'contar';
+    const cant = `<input class="${clase}" type="number" min="0" step="any" inputmode="decimal" placeholder="¿Cuántos?"
+      value="${p.pendiente ? '' : p.cantidad}" data-contar="${p.id}" aria-label="Cantidad de ${esc(p.nombre)}">`;
     return `<tr>
       <td class="nombre"><b>${esc(p.nombre)}</b> <small class="cat-movil">${esc(p.categoria)}</small></td>
       <td class="col-cat">${esc(p.categoria)}</td>
@@ -139,23 +148,36 @@ function renderProductos() {
   } else $('#sinProductos').textContent = 'Todavía no hay productos. Toque “+ Nuevo producto” para empezar.';
 }
 
-function renderVentas() {
-  $('#carrito').innerHTML = carrito.map((i, n) => `<li><span>${i.cantidad} × ${esc(i.nombre)}</span>
-    <span>${plata(i.precio * i.cantidad)} <button class="btn peq peligro" data-quitar="${n}">✕</button></span></li>`).join('');
-  $('#totalCarrito').textContent = plata(carrito.reduce((s, i) => s + i.precio * i.cantidad, 0));
-  $('#btnCobrar').disabled = !carrito.length;
+function renderCuentas() {
+  const f = $('#cierreFecha').value || hoyISO();
+  const d = dia(f);
+  if (document.activeElement !== $('#cierreVentas')) $('#cierreVentas').value = d.ventas ?? '';
+  $('#listaSalidas').innerHTML = d.salidas.length ? d.salidas.map((x) => `<li><span><b>${plata(x.valor)}</b> · ${esc(x.tipo)}</span>
+    <button class="btn peq peligro" data-quitar-salida="${x.id}">✕</button>${x.concepto ? `<small>${esc(x.concepto)}</small>` : ''}</li>`).join('')
+    : '<li class="vacio">No se ha sacado nada este día.</li>';
+  const sal = salidasDe(f);
+  $('#diaVentas').textContent = d.ventas == null ? 'Sin anotar' : plata(d.ventas);
+  $('#diaSalidas').textContent = plata(sal);
+  $('#diaQueda').textContent = plata((d.ventas || 0) - sal);
 
-  const fecha = $('#fechaHistorial').value || hoyISO();
-  const vs = ventasDelDia(fecha).slice().reverse();
-  const t = totales(vs);
-  $('#histTotal').textContent = plata(t.total);
-  $('#histGanancia').textContent = plata(t.ganancia);
-  $('#listaVentas').innerHTML = vs.length ? vs.map((v) => {
-    const total = v.items.reduce((s, i) => s + i.precio * i.cantidad, 0);
-    const hora = new Date(v.fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-    return `<li><span>${hora}</span><span><b>${plata(total)}</b> <button class="btn peq peligro" data-anular="${v.id}" title="Anular venta y devolver al inventario">Anular</button></span>
-      <small>${v.items.map((i) => `${i.cantidad} × ${esc(i.nombre)}`).join(', ')}</small></li>`;
-  }).join('') : '<li class="vacio">No hay ventas este día.</li>';
+  const mes = $('#mesResumen').value || hoyISO().slice(0, 7);
+  const r = resumenMes(mes);
+  $('#mesVentas').textContent = plata(r.ventas);
+  $('#mesSalidas').textContent = plata(r.salidas);
+  $('#mesQueda').textContent = plata(r.ventas - r.salidas);
+  $('#mesPromedio').textContent = r.diasConVenta
+    ? `En promedio vende ${plata(r.ventas / r.diasConVenta)} al día (${r.diasConVenta} día${r.diasConVenta === 1 ? '' : 's'} anotado${r.diasConVenta === 1 ? '' : 's'}).`
+    : 'Todavía no hay días anotados en este mes.';
+  const tipos = Object.entries(r.porTipo).sort((a, b) => b[1] - a[1]);
+  $('#mesGastosTipo').innerHTML = tipos.length ? '<b>¿En qué se fue la plata?</b>' + tipos.map(([t, v]) =>
+    `<div class="barra"><span>${esc(t)}</span><span>${plata(v)}</span><i style="width:${Math.round((v / r.salidas) * 100)}%"></i></div>`).join('') : '';
+  $('#tablaDias').innerHTML = r.fechas.slice().reverse().map((fe) => {
+    const dd = dia(fe), sa = salidasDe(fe);
+    const [y, m, dn] = fe.split('-').map(Number);
+    const corta = new Date(y, m - 1, dn).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' });
+    return `<tr data-ir-dia="${fe}"><td>${corta}</td><td class="num">${dd.ventas == null ? '—' : plata(dd.ventas)}</td>
+      <td class="num">${plata(sa)}</td><td class="num">${plata((dd.ventas || 0) - sa)}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" class="vacio">Sin datos.</td></tr>';
 }
 
 // ---------- productos ----------
@@ -217,47 +239,35 @@ $('#formSurtir').addEventListener('submit', (ev) => {
   guardar(); render(); aviso(`Ahora hay ${p.cantidad} de ${p.nombre}`);
 });
 
-// ---------- ventas ----------
-$('#formCarrito').addEventListener('submit', (ev) => {
+// ---------- cuentas del día ----------
+function diaEditable(f) { if (!datos.dias[f]) datos.dias[f] = { ventas: null, salidas: [] }; return datos.dias[f]; }
+$('#cierreFecha').addEventListener('change', renderCuentas);
+$('#mesResumen').addEventListener('change', renderCuentas);
+$('#btnGuardarVentas').addEventListener('click', () => {
+  const f = $('#cierreFecha').value || hoyISO();
+  const v = $('#cierreVentas').value;
+  diaEditable(f).ventas = v === '' ? null : Math.max(0, Number(v));
+  guardar(); render(); aviso(v === '' ? 'Total borrado' : `Vendido el ${fechaBonita(f)}: ${plata(Number(v))} ✔`);
+});
+$('#cierreVentas').addEventListener('keydown', (ev) => { if (ev.key === 'Enter') $('#btnGuardarVentas').click(); });
+$('#formSalida').addEventListener('submit', (ev) => {
   ev.preventDefault();
-  const nombre = $('#ventaProducto').value.trim().toLowerCase();
-  const cant = Number($('#ventaCantidad').value);
-  const p = datos.productos.find((x) => x.nombre.toLowerCase() === nombre);
-  if (!p) { aviso('Ese producto no está en el inventario.'); return; }
-  if (!(cant > 0)) return;
-  const enCarrito = carrito.filter((i) => i.id === p.id).reduce((s, i) => s + i.cantidad, 0);
-  if (enCarrito + cant > p.cantidad && !confirm(`Según el inventario solo hay ${p.cantidad} de ${p.nombre}. ¿Vender de todas formas?`)) return;
-  const e = estadoVence(p);
-  if (e && e.d < 0) aviso(`Ojo: ${p.nombre} está vencido`);
-  const ya = carrito.find((i) => i.id === p.id);
-  if (ya) ya.cantidad += cant; else carrito.push({ id: p.id, nombre: p.nombre, cantidad: cant, precio: p.precio, costo: p.costo });
-  $('#ventaProducto').value = ''; $('#ventaCantidad').value = 1; $('#ventaProducto').focus();
-  renderVentas();
+  const valor = Number($('#salidaValor').value); if (!(valor > 0)) return;
+  const f = $('#cierreFecha').value || hoyISO();
+  diaEditable(f).salidas.push({ id: id(), tipo: $('#salidaTipo').value, concepto: $('#salidaConcepto').value.trim(), valor });
+  $('#salidaValor').value = ''; $('#salidaConcepto').value = '';
+  guardar(); render(); aviso(`Salida de ${plata(valor)} anotada`);
 });
-
-$('#carrito').addEventListener('click', (ev) => {
-  const b = ev.target.closest('[data-quitar]'); if (!b) return;
-  carrito.splice(Number(b.dataset.quitar), 1); renderVentas();
+$('#listaSalidas').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-quitar-salida]'); if (!b) return;
+  const d = diaEditable($('#cierreFecha').value || hoyISO());
+  d.salidas = d.salidas.filter((x) => x.id !== b.dataset.quitarSalida); guardar(); render();
 });
-
-$('#btnCobrar').addEventListener('click', () => {
-  if (!carrito.length) return;
-  carrito.forEach((i) => { const p = datos.productos.find((x) => x.id === i.id); if (p) p.cantidad = Math.max(0, p.cantidad - i.cantidad); });
-  datos.ventas.push({ id: id(), fecha: new Date().toISOString(), items: carrito.map(({ id: productoId, ...r }) => ({ productoId, ...r })) });
-  const total = carrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
-  carrito = []; guardar();
-  $('#fechaHistorial').value = hoyISO();
-  render(); aviso(`Venta registrada: ${plata(total)}`);
+$('#tablaDias').addEventListener('click', (ev) => {
+  const tr = ev.target.closest('[data-ir-dia]'); if (!tr) return;
+  $('#cierreFecha').value = tr.dataset.irDia; renderCuentas(); window.scrollTo({ top: 0, behavior: 'smooth' });
 });
-
-$('#fechaHistorial').addEventListener('change', renderVentas);
-$('#listaVentas').addEventListener('click', (ev) => {
-  const b = ev.target.closest('[data-anular]'); if (!b) return;
-  if (!confirm('¿Anular esta venta? Los productos vuelven al inventario.')) return;
-  const v = datos.ventas.find((x) => x.id === b.dataset.anular);
-  v.items.forEach((i) => { const p = datos.productos.find((x) => x.id === i.productoId); if (p) p.cantidad += i.cantidad; });
-  datos.ventas = datos.ventas.filter((x) => x !== v); guardar(); render(); aviso('Venta anulada');
-});
+$('#irCierre').addEventListener('click', () => document.querySelector('[data-tab=cuentas]').click());
 
 // ---------- copia de seguridad ----------
 function descargar(nombre, contenido, tipo) {
@@ -272,7 +282,7 @@ $('#archivoImportar').addEventListener('change', async (ev) => {
     const d = JSON.parse(await file.text());
     if (!Array.isArray(d.productos)) throw new Error();
     if (!confirm('Esto reemplaza los datos actuales por los de la copia. ¿Continuar?')) return;
-    datos = { diasAviso: 7, ventas: [], ...d }; guardar(); render(); aviso('Copia cargada ✔');
+    datos = normalizar(d); guardar(); render(); aviso('Copia cargada ✔');
   } catch { aviso('Ese archivo no es una copia válida.'); }
   ev.target.value = '';
 });
@@ -299,17 +309,23 @@ function cargarCatalogo() {
 }
 document.querySelectorAll('.btnCatalogo').forEach((b) => b.addEventListener('click', cargarCatalogo));
 
-// Escribir la cantidad directamente en la tabla (productos por contar)
+// Escribir o corregir la cantidad directamente en la lista
 $('#tablaProductos').addEventListener('change', (ev) => {
   const inp = ev.target.closest('[data-contar]'); if (!inp || inp.value === '') return;
   const p = datos.productos.find((x) => x.id === inp.dataset.contar);
+  const pos = [...document.querySelectorAll('[data-contar]')].indexOf(inp);
+  const sale = $('#filtroEstado').value === 'contar' || $('#filtroEstado').value === 'poco'; // la fila puede desaparecer del filtro
   p.cantidad = Number(inp.value); p.pendiente = false; guardar();
   aviso(`${p.nombre}: ${p.cantidad} ✔`);
-  render();
-  const sig = document.querySelector('[data-contar]'); if (sig) sig.focus();
+  setTimeout(() => { // redibujar después de que la casilla termine de perder el foco
+    render();
+    // Pasar al siguiente producto para seguir contando
+    const todos = document.querySelectorAll('[data-contar]');
+    const sig = todos[sale && todos[pos]?.dataset.contar !== p.id ? pos : pos + 1]; if (sig) sig.focus();
+  }, 0);
 });
 $('#tablaProductos').addEventListener('keydown', (ev) => {
-  if (ev.key === 'Enter' && ev.target.matches('[data-contar]')) ev.target.dispatchEvent(new Event('change', { bubbles: true }));
+  if (ev.key === 'Enter' && ev.target.matches('[data-contar]')) ev.target.blur(); // al salir de la casilla se guarda
 });
 
 $('#btnQuitarPendientes').addEventListener('click', () => {
@@ -323,7 +339,8 @@ $('#irContar').addEventListener('click', () => {
   document.querySelector('[data-tab=productos]').click();
 });
 
-$('#fechaHistorial').value = hoyISO();
+$('#cierreFecha').value = hoyISO();
+$('#mesResumen').value = hoyISO().slice(0, 7);
 render();
 
 // Instalar en el celular y funcionar sin internet (solo cuando está publicada, p. ej. en Netlify)
